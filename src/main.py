@@ -1,4 +1,4 @@
-from chat import ChatClient
+from DatabaseChat.src.chat_client import ChatClient
 
 def main():
     chat = ChatClient()
