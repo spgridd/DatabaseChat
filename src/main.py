@@ -1,27 +1,6 @@
 from chat_client import ChatClient
 import streamlit as st
 
-# def main():
-#     chat = ChatClient()
-
-#     print("Welcome!\n"
-#           "Type 'exit' to quit and 'clear' to reset history.\n")
-    
-#     while True:
-#         prompt = input("User: ")
-#         if prompt.lower() == 'exit':
-#             break
-
-#         elif prompt.lower() == 'clear':
-#             chat.clear_history()
-#             print("\nChat history cleared!\n")
-#             continue
-
-#         reply = chat.ask_gpt(prompt=prompt)
-#         print(f"Assistant: {reply}")
-    
-#     print("\nExited successfully!\n")
-
 
 def main():
     if "chat" not in st.session_state:
@@ -52,10 +31,13 @@ def main():
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        reply = chat.ask_gpt(prompt=prompt)
-
         with st.chat_message("assistant"):
-            st.markdown(reply)
+            responce_placeholder = st.empty()
+
+            full_response = ""
+            for chunk in chat.ask_gpt(prompt=prompt):
+                full_response += chunk
+                responce_placeholder.markdown(full_response)
 
 
 

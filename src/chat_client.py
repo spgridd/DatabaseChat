@@ -11,6 +11,7 @@ class ChatClient():
         self.history = ChatHistory()
         self.history.add_message(role='system', content='You are a helpful assistant.')
 
+
     def ask_gpt(self, prompt):
         """
         Ask gpt model given question and receive answer.
@@ -19,14 +20,21 @@ class ChatClient():
 
         messages = self.history.get_history()
 
-        response = self.client.chat.completions.create(
+        response_stream = self.client.chat.completions.create(
             model='gpt-4.1-mini',
-            messages=messages
+            messages=messages,
+            stream=True
         )
 
-        self.history.add_message(role='assistant', content=response.choices[0].message.content)
+        full_response = ""
+        for chunk in response_stream:
+            delta = chunk.choices[0].delta
+            content = delta.content if delta.content else ""
+            full_response += content
+            yield content
 
-        return response.choices[0].message.content
+        self.history.add_message(role='assistant', content=full_response)
+
     
     def clear_history(self):
         """
