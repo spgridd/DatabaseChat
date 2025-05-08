@@ -24,7 +24,7 @@ class ChatClient():
             messages=messages
         )
 
-        self.history.add_message(role='assistant', content=prompt)
+        self.history.add_message(role='assistant', content=response.choices[0].message.content)
 
         return response.choices[0].message.content
     
@@ -33,3 +33,4 @@ class ChatClient():
         Clear history of the chat to start again without exiting.
         """
         self.history.clear_history()
+        self.history.add_message(role='system', content='You are a helpful assistant.')

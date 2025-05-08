@@ -24,16 +24,27 @@ import streamlit as st
 
 
 def main():
-    chat = ChatClient()
+    if "chat" not in st.session_state:
+        st.session_state.chat = ChatClient()
 
-    st.title("DatabaseChat")
+    chat = st.session_state.chat
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    header = st.container()
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    _, col2, col3 = header.columns([0.05, 0.8, 0.15])
+
+    with col2:
+        st.title("DatabaseChat")
+    with col3:
+        st.write("")
+        st.write("")
+        if st.button("Clear"):
+            chat.clear_history()
+
+    for message in chat.history.get_history():
+        if message["role"] != 'system':
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
     prompt = st.chat_input("Ask me something:")
 
@@ -41,14 +52,10 @@ def main():
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        st.session_state.messages.append({'role': 'user', 'content': prompt})
-
         reply = chat.ask_gpt(prompt=prompt)
 
         with st.chat_message("assistant"):
             st.markdown(reply)
-
-        st.session_state.messages.append({"role": "assistant", "content": reply})
 
 
 
