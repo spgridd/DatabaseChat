@@ -52,18 +52,31 @@ def main():
                     st.markdown(prompt)
 
                 with st.chat_message("assistant"):
-                    response_placeholder = st.empty()
-                    full_response = ""
-                    for chunk in chat.ask_gpt(prompt=prompt):
-                        full_response += chunk
-                        response_placeholder.markdown(full_response)
+                    # response_placeholder = st.empty()
+                    # full_response = ""
+                    # for chunk in chat.ask_gpt(prompt=prompt):
+                    #     full_response += chunk
+                    #     response_placeholder.markdown(full_response)
+                    with st.spinner(text="Waiting for the response..."):
+                        full_response = chat.ask_gpt(prompt=prompt)
+                    
+                    if full_response:
+                        decoded_response = ast.literal_eval(full_response)
+                        data_response = decoded_response['data']
+                        explanation_response = decoded_response['explanation']
+
+                        players_response = data_response['players']
+                        teams_response = data_response['teams']
+                        league_response = data_response['leagues']
+
+                        st.markdown(explanation_response)
 
         with col_left:
             if full_response:
-                decoded_response = ast.literal_eval(full_response)
-                players_response = decoded_response['players']
-                teams_response = decoded_response['teams']
-                league_response = decoded_response['leagues']
+                # decoded_response = ast.literal_eval(full_response)
+                # players_response = decoded_response['players']
+                # teams_response = decoded_response['teams']
+                # league_response = decoded_response['leagues']
 
                 players_df = pd.DataFrame(players_response)
                 teams_df = pd.DataFrame(teams_response)

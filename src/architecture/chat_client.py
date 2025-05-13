@@ -26,18 +26,20 @@ class ChatClient():
 
         response_stream = self.client.chat.completions.create(
             model='gpt-4.1-mini',
-            messages=messages,
-            stream=True
+            messages=messages
+            # stream=True
         )
 
-        full_response = ""
-        for chunk in response_stream:
-            delta = chunk.choices[0].delta
-            content = delta.content if delta.content else ""
-            full_response += content
-            yield content
+        # full_response = ""
+        # for chunk in response_stream:
+        #     delta = chunk.choices[0].delta
+        #     content = delta.content if delta.content else ""
+        #     full_response += content
+        #     yield content
 
-        self.history.add_message(role='assistant', content=full_response)
+        self.history.add_message(role='assistant', content=response_stream.choices[0].message.content)
+
+        return response_stream.choices[0].message.content
 
     
     def clear_history(self):
