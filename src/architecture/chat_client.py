@@ -1,7 +1,12 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from chat_history import ChatHistory
+from architecture.chat_history import ChatHistory
+
+print(os.getcwd)
+
+with open("src/data/ddl_schema.sql") as f:
+    ddl_schema = f.read()
 
 load_dotenv()
 
@@ -9,7 +14,6 @@ class ChatClient():
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.history = ChatHistory()
-        self.history.add_message(role='system', content='You are a helpful assistant.')
 
 
     def ask_gpt(self, prompt):
@@ -40,5 +44,4 @@ class ChatClient():
         """
         Clear history of the chat to start again without exiting.
         """
-        self.history.clear_history()
-        self.history.add_message(role='system', content='You are a helpful assistant.')
+        self.history = ChatHistory()
