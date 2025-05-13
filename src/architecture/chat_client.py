@@ -3,12 +3,12 @@ import os
 from dotenv import load_dotenv
 from architecture.chat_history import ChatHistory
 
-print(os.getcwd)
+
+load_dotenv()
 
 with open("src/data/ddl_schema.sql") as f:
     ddl_schema = f.read()
 
-load_dotenv()
 
 class ChatClient():
     def __init__(self):
