@@ -1,7 +1,8 @@
-from openai import OpenAI
+from google import genai
+from google.genai import types
 import os
 from dotenv import load_dotenv
-from architecture.chat_history import ChatHistory
+from architecture.chat_history import ChatHistory, Instructions
 
 
 load_dotenv()
@@ -12,34 +13,28 @@ with open("src/data/ddl_schema.sql") as f:
 
 class ChatClient():
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.history = ChatHistory()
+        self.instructions = Instructions()
+        self.client = genai.Client(
+            vertexai=True,
+            project=os.getenv("GEMINI_PROJECT"),
+            location=os.getenv("GEMINI_LOCATION")
+        )
+        self.chat = self.client.chats.create(
+            model="gemini-2.0-flash",
+            config=types.GenerateContentConfig(
+                system_instruction=self.instructions.system_config,
+                temperature=0.7
+            )
+        )
 
 
-    def ask_gpt(self, prompt):
+    def ask_gemini(self, prompt):
         """
         Ask gpt model given question and receive answer.
         """
-        self.history.add_message(role='user', content=prompt)
+        response = self.chat.send_message(prompt)
 
-        messages = self.history.get_history()
-
-        response_stream = self.client.chat.completions.create(
-            model='gpt-4.1-mini',
-            messages=messages
-            # stream=True
-        )
-
-        # full_response = ""
-        # for chunk in response_stream:
-        #     delta = chunk.choices[0].delta
-        #     content = delta.content if delta.content else ""
-        #     full_response += content
-        #     yield content
-
-        self.history.add_message(role='assistant', content=response_stream.choices[0].message.content)
-
-        return response_stream.choices[0].message.content
+        return response.text
 
     
     def clear_history(self):

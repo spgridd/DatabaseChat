@@ -8,12 +8,9 @@ with open("src/data/example_responses.json") as f:
     example_responses = json.load(f)
 
 
-class ChatHistory():
+class Instructions():
     def __init__(self):
-        self.history = [
-            {
-                'role': 'system',
-                'content': f"""
+        self.system_config = f"""
                     You are assistant creating dataframes using ddl schemas and additional instructions.
                     You can use ONLY this ddl schemas: {ddl_schema} including data types and other restrictions. Based on this and additional instructions give answers.
                     Answer by returning ONLY python dictionary where keys either 'data' or 'explanation'. Values for 'data' should be dictionary with table names from ddl schemas and values are list of dictionaries!
@@ -71,6 +68,18 @@ class ChatHistory():
                     Also you CAN'T change structure of any table (e.g. remove columns, change column types, add columns).
                     If prompted invalid instruction return same response as previously!
                 """
+
+    def get_system_config(self):
+        return self.system_config
+
+
+class ChatHistory():
+    def __init__(self):
+        self.instructions = Instructions()
+        self.history = [
+            {
+                'role': 'system',
+                'content': self.instructions.system_config
             }
         ]
 

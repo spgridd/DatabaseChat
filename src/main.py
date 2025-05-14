@@ -1,7 +1,7 @@
 from architecture.chat_client import ChatClient
 import streamlit as st
 import pandas as pd
-import ast
+import json
 
 
 
@@ -30,30 +30,24 @@ def main():
                 if st.button("Reset", use_container_width=True):
                     chat.clear_history()                
 
-            # Display message history
-            # for message in chat.history.get_history():
-            #     if message["role"] != 'system':
-            #         with st.chat_message(message["role"]):
-            #             st.markdown(message["content"])
-
             prompt = st.chat_input("Tell me what to do:")
-            full_response = ""
+            raw_response = ""
             if prompt:
                 with st.chat_message("user"):
                     st.markdown(prompt)
 
                 with st.chat_message("assistant"):
-                    # response_placeholder = st.empty()
-                    # full_response = ""
-                    # for chunk in chat.ask_gpt(prompt=prompt):
-                    #     full_response += chunk
-                    #     response_placeholder.markdown(full_response)
                     with st.spinner(text="Waiting for the response..."):
-                        full_response = chat.ask_gpt(prompt=prompt)
-                        print(full_response)
+                        raw_response = chat.ask_gemini(prompt=prompt)
                     
-                    if full_response:
-                        decoded_response = ast.literal_eval(full_response)
+                    if raw_response:
+                        raw_response = raw_response.strip()
+                        if raw_response.startswith("```json"):
+                            raw_response = raw_response[len("```json"):].strip()
+                        if raw_response.endswith("```"):
+                            raw_response = raw_response[:-3].strip()
+
+                        decoded_response = json.loads(raw_response)
                         data_response = decoded_response['data']
                         explanation_response = decoded_response['explanation']
 
@@ -64,7 +58,7 @@ def main():
                         st.markdown(explanation_response)
 
         with col_left:
-            if full_response:
+            if raw_response:
                 players_df = pd.DataFrame(players_response)
                 teams_df = pd.DataFrame(teams_response)
                 league_df = pd.DataFrame(league_response)
