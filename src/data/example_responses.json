@@ -11,6 +11,7 @@
         },
         "explanation": "Succesfully created two sample rows in Players DataFrame."
     },
+
     "Example1_2": {
         "data": {
             "players": [
@@ -23,6 +24,7 @@
         },
         "explanation": "Added one more row into Players DataFrame."
     },
+
 
     "Example2": {
         "data": {
@@ -55,6 +57,7 @@
         "explanation": "Added one more player into Players DataFrame."
     },
 
+
     "Example3": {
         "data": {
             "players": [
@@ -71,6 +74,7 @@
         "explanation": "Unfortunately I can't help you with this type of question."
     },
 
+    
     "Example4": {
         "data": {
             "players": [

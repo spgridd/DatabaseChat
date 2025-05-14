@@ -1,10 +1,12 @@
 import json
 
+
 with open("src/data/ddl_schema.sql") as f:
     ddl_schema = f.read()
 
 with open("src/data/example_responses.json") as f:
     example_responses = json.load(f)
+
 
 class ChatHistory():
     def __init__(self):
