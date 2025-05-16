@@ -10,67 +10,55 @@ with open("src/data/example_responses.json") as f:
 
 class Instructions():
     def __init__(self):
-        self.system_config = f"""
-                    You are assistant creating dataframes using ddl schemas and additional instructions.
-                    You can use ONLY this ddl schemas: {ddl_schema} including data types and other restrictions. Based on this and additional instructions give answers.
-                    Answer by returning ONLY python dictionary where keys either 'data' or 'explanation'. Values for 'data' should be dictionary with table names from ddl schemas and values are list of dictionaries!
-                    Values for 'explanation' is string where you shortly explain performed actions.
-                    Example 1: 
-                    User: 'Create two sample rows of players'
-                    Assistant: '{example_responses["Example1"]}'
-                    
-                    Use already created data e.g.:
-                    User: 'Now add one more row to players'
-                    Assistant: '{example_responses["Example1_2"]}'
-                    
-                    Example 2:
-                    If asked about multiple tables from ddl schema e.g.:
-                    User:'Create two rows for table players and two rows for table teams.'
-                    Assistant: '{example_responses["Example2"]}'
-                    
-                    Also use already created data e.g.:
-                    User: 'Now add one more player.'
-                    Assistant: '{example_responses["Example2_2"]}'
+        self.config = ""
 
-                    Example 3:
-                    If given irrelevant instructions return previously returned response with new explanation e.g.:
-                    User:'Create two rows for table players and two rows for table teams.'
-                    Assistant: '{example_responses["Example2"]}'
-                    
-                    Also use already created data e.g.:
-                    User: 'Now add one more player.'
-                    Assistant: '{example_responses["Example2_2"]}'
 
-                    Irrelevant instruction e.g:
-                    User: 'Tell me capital of France'
-                    Assistant: '{example_responses["Example3"]}'
+    def get_generate_config(self, ddl):
+        self.generate_config = f"""
+            You are an AI assistant that analyzes this database schema: {ddl} and user questions to produce structured data.
+            Always respond in **valid JSON format** with this structure:
 
-                    Example 4:
-                    If given invalid or forbidden instructions return previously returned response with new explanation e.g.:
-                    User:'Create two rows for table players and two rows for table teams.'
-                    Assistant: '{example_responses["Example2"]}'
-                    
-                    Also use already created data e.g.:
-                    User: 'Now add one more player.'
-                    Assistant: '{example_responses["Example2_2"]}'
+            {
+            "data": {
+                "<table_name_1>": [<rows_as_dicts>],
+                "<table_name_2>": [<rows_as_dicts>],
+                ...
+            }
+            }
 
-                    Invalid or forbidden instruction e.g:
-                    User: 'Tell me capital of France'
-                    Assistant: '{example_responses["Example4"]}'
-                    
-                    REMEMBER:
-                    Don't provide any additional informations or text. Don't use code blocks. Answer just by returning dictionary.
-                    Be aware of quote mismatch or string literal termination errors, especially when using apostrophes or quotes inside strings.
-                    Ensure that string literals do not contain unescaped quotes that match the surrounding delimiters. 
-                    Use consistent quoting (single vs. double) and escape characters properly in string values.
-                    Remember to use history to answer next questions as they often use previous instructions.
-                    Remember that data MUST be valid regarding these ddl schemas: {ddl_schema} including data types and other restrictions.
-                    Also you CAN'T change structure of any table (e.g. remove columns, change column types, add columns).
-                    If prompted invalid instruction return same response as previously!
-                """
+            - The table names must match the actual table names in the current schema.
+            - Each table should be returned as a list of dictionaries (like JSON records).
+            - Return only valid JSON, without markdown code blocks or extra formatting.
+            - Do not use triple backticks (```) or language identifiers like ```json.
+            - Escape all backslashes and quotes properly according to JSON rules.
+            - Ensure the JSON parses correctly with `json.loads()` in Python.
+        """
+        return self.generate_config
+    
 
-    def get_system_config(self):
-        return self.system_config
+    def get_edit_config(self, dataframes):
+        self.edit_config = f"""
+            You are an AI assistant that analyzes this json dataframes: {dataframes} and user questions to APPLY CHANGES FOR EXISTING structured data.
+                        Always respond in **valid JSON format** with this structure:
+
+            {{
+            "data": {{
+                "<table_name_1>": [<rows_as_dicts>],
+                "<table_name_2>": [<rows_as_dicts>],
+                ...
+            }}
+            }}
+
+            - The table names must match the actual table names in the current schema.
+            - Each table should be returned as a list of dictionaries (like JSON records).
+            - You MUST preserve all tables and their existing data, even if no changes are made to them.
+            - Only apply the required changes to the relevant table(s); all others should remain exactly as in the input.
+            - Return only valid JSON, without markdown code blocks or extra formatting.
+            - Do not use triple backticks (```) or language identifiers like ```json.
+            - Escape all backslashes and quotes properly according to JSON rules.
+            - Ensure the JSON parses correctly with `json.loads()` in Python.
+        """
+        return self.edit_config
 
 
 class ChatHistory():
