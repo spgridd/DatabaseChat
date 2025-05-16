@@ -18,13 +18,13 @@ class Instructions():
             You are an AI assistant that analyzes this database schema: {ddl} and user questions to produce structured data.
             Always respond in **valid JSON format** with this structure:
 
-            {
-            "data": {
+            {{
+            "data": {{
                 "<table_name_1>": [<rows_as_dicts>],
                 "<table_name_2>": [<rows_as_dicts>],
                 ...
-            }
-            }
+            }}
+            }}
 
             - The table names must match the actual table names in the current schema.
             - Each table should be returned as a list of dictionaries (like JSON records).
