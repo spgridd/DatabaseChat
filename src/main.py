@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import json
+import logging
 from architecture.chat_client import ChatClient
 
 dummy_data = {
@@ -11,6 +12,8 @@ dummy_data = {
     "Price": [19.99, 24.99, 19.99, 29.99, 24.99],
     "Total": [59.97, 124.95, 39.98, 29.99, 99.96]
 }
+
+logging.basicConfig(level=logging.INFO)
 
 def main():
     st.set_page_config(layout="wide")
@@ -45,7 +48,7 @@ def main():
             if "ddl_schema" not in st.session_state:
                 st.warning("Please upload a DDL schema first.")
             else:
-                with st.spinner("Generating based on schema..."):
+                with st.spinner("Generating for all tables..."):
                     response = chat.generate_data(
                         prompt=generate_input,
                         ddl_schema=st.session_state.ddl_schema,
@@ -53,12 +56,15 @@ def main():
                         max_tokens=max_tokens
                     )
                     try:
+                        logging.info(f"\nRESPONSE:\n{response}\n")
                         decoded = json.loads(response)
+                        logging.info(f"\nDECODED:\n{decoded}\n")
                         st.session_state.last_response = decoded
                     except json.JSONDecodeError as e:
-                        st.error("Response was too long! Increase Max Tokens param or simplify your prompt")
+                        st.error("Response was too long! Increase Max Tokens or simplify your prompt")
                         st.session_state.last_response = None
-                        print("JSON decode error:", e)
+                        logging.error(f"JSON decode error: {e}")
+
                         
 
     # Container to display and edit dfs
@@ -115,7 +121,7 @@ def main():
                             except json.JSONDecodeError as e:
                                 st.error("Response was too long! Increase Max Tokens param or simplify your prompt")
                                 st.session_state.last_response = None
-                                print("JSON decode error:", e)
+                                logging.error(f"JSON decode error: {e}")
                 else:
                     st.warning("Please enter a question.")
 
