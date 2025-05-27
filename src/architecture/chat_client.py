@@ -6,6 +6,8 @@ from typing import Dict, List, Any
 from pydantic import BaseModel, ConfigDict
 import json
 import logging
+from sqlalchemy import create_engine
+import pandas as pd
 
 from architecture.chat_history import ChatHistory, Instructions
 from functions.parse_ddl import parse_multiple_schemas
@@ -29,6 +31,7 @@ class ChatClient():
             location=os.getenv("GEMINI_LOCATION")
         )
         self.instructions = Instructions()
+        self.history = ChatHistory()
 
         self.is_safe = False
 
@@ -75,20 +78,39 @@ class ChatClient():
         )
 
     def sql_generation(self, user_query, ddl_schema):
+        # Add some cleaning of the history
         contents = [types.Content(parts=[types.Part(text=f"Generate SQL query for this setup.\nDDL schema: {ddl_schema}.\nUser query: {user_query}")], role='user')]
         system_instruction = self.instructions.get_sql_config()
+
+        self.history.add_message(role='user', content=user_query)
 
         response = self.client.models.generate_content(
             model="gemini-2.0-flash",
             contents=contents,
             config=types.GenerateContentConfig(
-                system_instruction=system_instruction
+                system_instruction=system_instruction,
+                temperature=0.0
             )
         )
 
-        # result_df = sql_client.execute(response)
+        user = os.getenv("POSTGRESQL_USER")
+        password = os.getenv("POSTGRESQL_PASSWORD")
+        db = os.getenv("POSTGRESQL_DB")
+        engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
 
-        # return response, result_df
+        response_text = response.candidates[0].content.parts[0].text
+
+        if response_text.startswith("```sql"):
+            response_text = response_text[len("```sql"):].strip()
+        if response_text.endswith("```"):
+            response_text = response_text[:-3].strip()
+
+        with engine.connect() as connection:
+            df = pd.read_sql(response_text, connection)
+
+        self.history.add_message(role='assistant', content=(response_text, df))
+
+        return response_text, df
 
 
 

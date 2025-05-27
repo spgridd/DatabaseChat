@@ -106,17 +106,19 @@ class Instructions():
     def get_sql_config(self):
         self.sql_config = """
         You are SQL query generator. For given DDL schema and user query, you provide valid PostgreSQL query.
-        
+
         Input:
             * User query is natural language text.
             * DDL schema could be used for table generation.
 
         Output:
             * Valid PosgreSQL query.
+            * Tablenames MUST be in quotes e.g. SELECT * FROM "Tablename"; 
 
         Restrictions:
             * Do NOT respond in conversational text!
             * Provide only PostgreSQL query.
+            * Remember to quote table name if it's capitalized
         """
         return self.sql_config
 
@@ -124,12 +126,7 @@ class Instructions():
 class ChatHistory():
     def __init__(self):
         self.instructions = Instructions()
-        self.history = [
-            {
-                'role': 'system',
-                'content': self.instructions.system_config
-            }
-        ]
+        self.history = []
 
     def add_message(self, role, content):
         """

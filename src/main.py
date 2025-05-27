@@ -1,6 +1,7 @@
 import streamlit as st
 from data_generation import main as data_page
 from talk_to_data import main as talk_page
+from architecture.chat_history import ChatHistory
 
 
 def main():
