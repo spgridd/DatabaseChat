@@ -2,7 +2,12 @@ import streamlit as st
 import pandas as pd
 import json
 import logging
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
+import os
 from architecture.chat_client import ChatClient
+
+load_dotenv()
 
 dummy_data = {
     "Date": pd.date_range(start="2023-01-01", periods=5, freq="D"),
@@ -143,10 +148,20 @@ def main():
 
     with st.container():
         if st.button("Save locally"):
-            if st.session_state.get("ddl_schema"):
-                st.session_state.DDL_SCHEMA = st.session_state.ddl_schema
-            if st.session_state.get("last_response"):
-                st.session_state.CURRENT_DF = st.session_state.last_response
+            table_names = list(st.session_state.last_response["data"].keys())
+            user = os.getenv("POSTGRESQL_USER")
+            password = os.getenv("POSTGRESQL_PASSWORD")
+            db = os.getenv("POSTGRESQL_DB")
+            engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
+            
+            for table_name in table_names:
+                df = pd.DataFrame(st.session_state.last_response["data"][table_name])
+                if not df.empty:
+                    df.to_sql(table_name, engine, if_exists="replace", index=False)
+                    st.success(f"Saved table: {table_name}")
+                else:
+                    st.warning(f"Table {table_name} is empty and was skipped.")
+
 
 
 
