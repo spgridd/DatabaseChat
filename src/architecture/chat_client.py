@@ -12,6 +12,7 @@ import pandas as pd
 from architecture.chat_history import ChatHistory, Instructions
 from functions.parse_ddl import parse_multiple_schemas
 from functions.validation import validate_json
+from functions.sql_generation import generate_query
 
 
 load_dotenv()
@@ -56,66 +57,90 @@ class ChatClient():
             }]
         )
 
-        self.sql_tool = types.Tool(
-            function_declarations=[{
-                "name": '',
-                "description": "",
+        self.talk_tools = types.Tool(
+            function_declarations=[
+            {
+                "name": "generate_query",
+                "description": "Generate SQL query from user prompt.",
                 "parameters": {
-                    "type": "",
+                    "type": "object",
                     "properties": {
                         "user_query": {
-                            "type": "",
-                            "description": ""
-                        },
-                        "ddl_schema": {
-                            "type": "",
-                            "description": ""
-                        }             
+                            "type": "string",
+                            "description": "Corrected prompt of the user for better understanding."
+                        }           
                     },
-                    "required": ["user_query", "ddl_schema"]
+                    "required": ["user_query"]
+                }
+            },
+            {
+                "name": "create_plot",
+                "description": "Create plot from user prompt.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_query": {
+                            "type": "string",
+                            "description": "Corrected prompt of the user for better understanding."
+                        }           
+                    },
+                    "required": ["user_query"]
                 }
             }]
         )
 
-    def sql_generation(self, user_query, ddl_schema):
+    def talk_with_data(self, user_query, ddl_schema):
         # Add some cleaning of the history
-        contents = [types.Content(parts=[types.Part(text=f"Generate SQL query for this setup.\nDDL schema: {ddl_schema}.\nUser query: {user_query}")], role='user')]
-        system_instruction = self.instructions.get_sql_config()
+        contents = [types.Content(parts=[types.Part(text=user_query)], role='user')]
+        system_instruction = self.instructions.get_talk_config()
 
         self.history.add_message(role='user', content=user_query)
+
+        config={
+            "system_instruction": system_instruction,
+            "temperature": 0.0,
+            "tools": [self.talk_tools],
+            "tool_config": {"function_calling_config": {"mode": "any"}}
+        }
 
         response = self.client.models.generate_content(
             model="gemini-2.0-flash",
             contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.0
-            )
+            config=config
         )
 
-        user = os.getenv("POSTGRESQL_USER")
-        password = os.getenv("POSTGRESQL_PASSWORD")
-        db = os.getenv("POSTGRESQL_DB")
-        engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
+        candidate = response.candidates[0]
+        part = candidate.content.parts[0]
+        # response_text = part.text
 
-        response_text = response.candidates[0].content.parts[0].text
+        for part in candidate.content.parts:
+            call = getattr(part, "function_call", None)
+            if call:
+                logging.info("\nFunction Called\n")
+                if call.name == "generate_query":
+                    dummy_query = call.args["user_query"]
+                    logging.info(f"\nENHANCED QUERY:\n{dummy_query}\n")
 
-        if response_text.startswith("```sql"):
-            response_text = response_text[len("```sql"):].strip()
-        if response_text.endswith("```"):
-            response_text = response_text[:-3].strip()
-        
-        # print("TYPE:", type(response_text))
-        # print("RAW TEXT:", repr(response_text))
-        # logging.info(f"\nQUERY:\n{response_text}\n")
+                    query, dataframe = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema)
 
-        with engine.connect() as connection:
-            df = pd.read_sql(text(response_text), connection)
+                    self.history.add_message(role='assistant', content=(query, dataframe))
 
-        self.history.add_message(role='assistant', content=(response_text, df))
+                    return query, dataframe
+                
+                elif call.name == "create_plot":
+                    logging.info("\nCREATE PLOT CALLED\n")
+                    return "CREATE PLOT CALLED", pd.DataFrame([])
+                
+        # contents.append(types.Content(role="model", parts=[candidate]))
 
-        return response_text, df
-
+        # # Add function result to the history
+        # function_response_part = types.Part(
+        #     function_response=types.FunctionResponse(
+        #         name=tool_call.name,
+        #         response={"result": result}
+        #     )
+        # )
+        # contents.append(types.Content(role="function", parts=[function_response_part]))
 
 
     def update_safety_flag(self, response):

@@ -121,6 +121,16 @@ class Instructions():
             * Remember to quote table name if it's capitalized
         """
         return self.sql_config
+    
+
+    def get_talk_config(self):
+        self.talk_config = """
+            You are helpful assistant in the talk with data application.
+            
+            Very important:
+                * Do NOT respond in conversational text!
+        """
+        return self.talk_config
 
 
 class ChatHistory():

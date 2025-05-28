@@ -6,8 +6,8 @@ from architecture.chat_history import ChatHistory
 
 def main():
     st.set_page_config(layout="wide")
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Page", ("Data Page", "Talk to Data"), index=0, label_visibility="hidden")
+    with st.sidebar.title("Navigation"):
+        page = st.sidebar.radio("Page", ("Data Page", "Talk to Data"), index=0, label_visibility="hidden")
 
 
     if page == "Data Page":

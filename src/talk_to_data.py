@@ -28,7 +28,7 @@ def main():
             st.markdown(prompt)
 
         with st.chat_message('assistant'):
-            query, df = chat.sql_generation(user_query=prompt, ddl_schema=schema)
+            query, df = chat.talk_with_data(user_query=prompt, ddl_schema=schema)
 
             st.markdown(query)
 
