@@ -6,7 +6,7 @@ from typing import Dict, List, Any
 from pydantic import BaseModel, ConfigDict
 import json
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import pandas as pd
 
 from architecture.chat_history import ChatHistory, Instructions
@@ -104,9 +104,13 @@ class ChatClient():
             response_text = response_text[len("```sql"):].strip()
         if response_text.endswith("```"):
             response_text = response_text[:-3].strip()
+        
+        # print("TYPE:", type(response_text))
+        # print("RAW TEXT:", repr(response_text))
+        # logging.info(f"\nQUERY:\n{response_text}\n")
 
         with engine.connect() as connection:
-            df = pd.read_sql(response_text, connection)
+            df = pd.read_sql(text(response_text), connection)
 
         self.history.add_message(role='assistant', content=(response_text, df))
 

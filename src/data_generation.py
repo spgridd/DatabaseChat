@@ -85,7 +85,7 @@ def main():
             if st.session_state.last_response.get("data"):
                 table_names = list(st.session_state.last_response["data"].keys())
 
-                col_text, col_download, col_selectbox = st.columns([6, 1, 1])
+                col_text, col_download, col_selectbox = st.columns([6, 2, 1])
                 with col_selectbox:
                     selected_table = st.selectbox("", options=table_names)
                 
@@ -114,7 +114,7 @@ def main():
             st.dataframe(dummy_df, use_container_width=True)
             st.write("*Dummy data")
         
-        col_input, separator, col_button = st.columns([7, 0.25, 1])
+        col_input, separator, col_button = st.columns([7, 0.25, 3])
         # Edit df input
         with col_input:
             edit_input = st.text_input(label="Quick edit", placeholder="Enter quick edit instructions...", label_visibility='hidden')
@@ -147,20 +147,22 @@ def main():
                     st.warning("Please enter a question.")
 
     with st.container():
-        if st.button("Save locally"):
-            table_names = list(st.session_state.last_response["data"].keys())
-            user = os.getenv("POSTGRESQL_USER")
-            password = os.getenv("POSTGRESQL_PASSWORD")
-            db = os.getenv("POSTGRESQL_DB")
-            engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
-            
-            for table_name in table_names:
-                df = pd.DataFrame(st.session_state.last_response["data"][table_name])
-                if not df.empty:
-                    df.to_sql(table_name, engine, if_exists="replace", index=False)
-                    st.success(f"Saved table: {table_name}")
-                else:
-                    st.warning(f"Table {table_name} is empty and was skipped.")
+        if "last_response" in st.session_state and st.session_state.last_response:
+            if st.session_state.last_response.get("data"):
+                if st.button("Save locally"):
+                    table_names = list(st.session_state.last_response["data"].keys())
+                    user = os.getenv("POSTGRESQL_USER")
+                    password = os.getenv("POSTGRESQL_PASSWORD")
+                    db = os.getenv("POSTGRESQL_DB")
+                    engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
+                    
+                    for table_name in table_names:
+                        df = pd.DataFrame(st.session_state.last_response["data"][table_name])
+                        if not df.empty:
+                            df.to_sql(table_name, engine, if_exists="replace", index=False)
+                            st.success(f"Saved table: {table_name}")
+                        else:
+                            st.warning(f"Table {table_name} is empty and was skipped.")
 
 
 
