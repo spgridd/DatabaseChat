@@ -121,7 +121,9 @@ class ChatClient():
                     dummy_query = call.args["user_query"]
                     logging.info(f"\nENHANCED QUERY:\n{dummy_query}\n")
 
-                    query, dataframe = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema)
+                    error = 'first_run'
+                    while error:
+                        query, dataframe, error = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema, error=error)
 
                     self.history.add_message(role='assistant', content=(query, dataframe))
 

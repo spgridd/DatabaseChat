@@ -106,6 +106,7 @@ class Instructions():
     def get_sql_config(self):
         self.sql_config = """
         You are SQL query generator. For given DDL schema and user query, you provide valid PostgreSQL query.
+        If provided previous errors focus on avoiding them.
 
         Input:
             * User query is natural language text.
