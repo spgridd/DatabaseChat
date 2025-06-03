@@ -225,55 +225,16 @@ class ChatClient():
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    # tools=[self.validation_tool],
                     temperature=temperature
                 )
             )
 
-            # candidate = response.candidates[0]
-            # part = candidate.content.parts[0]
-            logging.info(f"\nRESPONSE:\n{response}\n")
             response_text = response.text
-
-            # for part in candidate.content.parts:
-            #     # logging.info(f"Response Part: {part}")
-            #     call = getattr(part, "function_call", None)
-            #     if call:
-            #         logging.info("Function call found.")
-            #         if call.name == "validate_inputs":
-            #             schema = call.args["schema"]
-            #             data = call.args["data"]
-
-            #             # Validate
-            #             schema = parse_multiple_schemas(schema)
-            #             is_valid, errors = validate_json(schema, data)
-
-            #             if not is_valid:
-            #                 logging.info("NOT VALID")
-            #                 return self.generate_data(
-            #                     prompt=f"Validation failed due to: {errors}. Please correct the JSON.",
-            #                     ddl_schema=ddl_schema,
-            #                     temperature=temperature,
-            #                     max_tokens=max_tokens
-            #                 )
-            #             else:
-            #                 logging.info("VALID")
-
 
             if response_text.startswith("```json"):
                 response_text = response_text[len("```json"):].strip()
             if response_text.endswith("```"):
                 response_text = response_text[:-3].strip()
-
-            # try:
-            #     parsed = json.loads(response_text)
-            #     if "data" in parsed and table in parsed["data"]:
-            #         result_data[table] = parsed["data"][table]
-            #     else:
-            #         result_data[table] = parsed.get(table, parsed)
-            # except json.JSONDecodeError as e:
-            #     logging.warning(f"Failed to parse response for table {table}: {e}")
-            #     continue
 
             return response_text
         

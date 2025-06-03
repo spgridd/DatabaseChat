@@ -40,7 +40,7 @@ def generate_plot(client, user_query, ddl_schema, df, error, contents):
         )
     )
 
-    response_text = response.candidates[0].content.parts[0].text
+    response_text = response.text
 
     contents.append(types.Content(parts=[types.Part(text=response_text)], role='model'))
 

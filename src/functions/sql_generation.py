@@ -45,7 +45,7 @@ def generate_query(client, user_query, ddl_schema, error, contents, for_plot):
         db = os.getenv("POSTGRESQL_DB")
         engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
 
-        response_text = response.candidates[0].content.parts[0].text
+        response_text = response.text
 
         contents.append(types.Content(parts=[types.Part(text=response_text)], role='model'))
 
