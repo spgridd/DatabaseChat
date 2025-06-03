@@ -32,7 +32,7 @@ def generate_plot(client, user_query, ddl_schema, df, error, contents):
     contents.append(types.Content(parts=[types.Part(text=prompt)], role='user'))
     system_instruction = Instructions().get_plot_config()
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash-preview-05-20",
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,

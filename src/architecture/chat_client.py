@@ -8,6 +8,7 @@ import json
 import logging
 from sqlalchemy import create_engine, text
 import pandas as pd
+from langfuse import Langfuse
 
 from architecture.chat_history import ChatHistory, Instructions
 from functions.parse_ddl import parse_multiple_schemas
@@ -31,6 +32,11 @@ class ChatClient():
             vertexai=True,
             project=os.getenv("GEMINI_PROJECT"),
             location=os.getenv("GEMINI_LOCATION")
+        )
+        self.langfuse = Langfuse(
+            secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+            public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+            host="https://cloud.langfuse.com"
         )
         self.instructions = Instructions()
         self.history = ChatHistory()
@@ -215,42 +221,43 @@ class ChatClient():
             ]
 
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash-preview-05-20",
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    tools=[self.validation_tool],
+                    # tools=[self.validation_tool],
                     temperature=temperature
                 )
             )
 
-            candidate = response.candidates[0]
-            part = candidate.content.parts[0]
-            response_text = part.text
+            # candidate = response.candidates[0]
+            # part = candidate.content.parts[0]
+            logging.info(f"\nRESPONSE:\n{response}\n")
+            response_text = response.text
 
-            for part in candidate.content.parts:
-                # logging.info(f"Response Part: {part}")
-                call = getattr(part, "function_call", None)
-                if call:
-                    logging.info("Function call found.")
-                    if call.name == "validate_inputs":
-                        schema = call.args["schema"]
-                        data = call.args["data"]
+            # for part in candidate.content.parts:
+            #     # logging.info(f"Response Part: {part}")
+            #     call = getattr(part, "function_call", None)
+            #     if call:
+            #         logging.info("Function call found.")
+            #         if call.name == "validate_inputs":
+            #             schema = call.args["schema"]
+            #             data = call.args["data"]
 
-                        # Validate
-                        schema = parse_multiple_schemas(schema)
-                        is_valid, errors = validate_json(schema, data)
+            #             # Validate
+            #             schema = parse_multiple_schemas(schema)
+            #             is_valid, errors = validate_json(schema, data)
 
-                        if not is_valid:
-                            logging.info("NOT VALID")
-                            return self.generate_data(
-                                prompt=f"Validation failed due to: {errors}. Please correct the JSON.",
-                                ddl_schema=ddl_schema,
-                                temperature=temperature,
-                                max_tokens=max_tokens
-                            )
-                        else:
-                            logging.info("VALID")
+            #             if not is_valid:
+            #                 logging.info("NOT VALID")
+            #                 return self.generate_data(
+            #                     prompt=f"Validation failed due to: {errors}. Please correct the JSON.",
+            #                     ddl_schema=ddl_schema,
+            #                     temperature=temperature,
+            #                     max_tokens=max_tokens
+            #                 )
+            #             else:
+            #                 logging.info("VALID")
 
 
             if response_text.startswith("```json"):
@@ -327,7 +334,7 @@ class ChatClient():
             system_instruction = self.instructions.get_edit_config(json_schema=partial_data)
             # Call model with prompt and only affected tables
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash-preview-05-20",
                 contents=[types.Content(parts=[types.Part(text=prompt)], role="user")],
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
@@ -336,9 +343,9 @@ class ChatClient():
                 )
             )
 
-            candidate = response.candidates[0]
-            parts = candidate.content.parts[0]
-            response_text = parts.text
+            # candidate = response.candidates[0]
+            # parts = candidate.content.parts[0]
+            response_text = response.text
 
             try:
                 edited_partial = json.loads(response_text)

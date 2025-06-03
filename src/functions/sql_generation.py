@@ -32,7 +32,7 @@ def generate_query(client, user_query, ddl_schema, error, contents, for_plot):
             system_instruction = Instructions().get_sql_config(for_plot=for_plot)
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash-preview-05-20",
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
