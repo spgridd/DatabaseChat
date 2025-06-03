@@ -20,3 +20,6 @@ venv/
 
 # draft ideas notebook
 src/test_notebook.ipynb
+
+# Outputs
+outputs/

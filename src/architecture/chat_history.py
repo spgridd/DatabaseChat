@@ -103,25 +103,66 @@ class Instructions():
         return self.safety_config
 
     
-    def get_sql_config(self):
-        self.sql_config = """
-        You are SQL query generator. For given DDL schema and user query, you provide valid PostgreSQL query.
+    def get_sql_config(self, for_plot):
+        if for_plot:
+            self.sql_config = """
+            You are SQL query generator. For given DDL schema and user query, you provide valid PostgreSQL query.
+            If provided previous errors focus on avoiding them.
+
+            Input:
+                * User query is natural language text with instruction to create some plot.
+                * DDL schema could be used for table generation.
+
+            Output:
+                * Valid PosgreSQL query that will provide data necessary for the plot creation.
+                * Tablenames MUST be in quotes e.g. SELECT * FROM "Tablename"; 
+
+            Restrictions:
+                * Do NOT respond in conversational text!
+                * Provide ONLY PostgreSQL query.
+                * Remember to quote table name if it's capitalized
+            """
+        else:
+            self.sql_config = """
+            You are SQL query generator. For given DDL schema and user query, you provide valid PostgreSQL query.
+            If provided previous errors focus on avoiding them.
+
+            Input:
+                * User query is natural language text.
+                * DDL schema could be used for table generation.
+
+            Output:
+                * Valid PosgreSQL query.
+                * Tablenames MUST be in quotes e.g. SELECT * FROM "Tablename"; 
+
+            Restrictions:
+                * Do NOT respond in conversational text!
+                * Provide only PostgreSQL query.
+                * Remember to quote table name if it's capitalized
+            """
+        return self.sql_config
+    
+
+    def get_plot_config(self):
+        self.plot_config = """
+        You are python code for plots generator. For given DDL schema, user query and pandas dataframe, you provide valid python code.
         If provided previous errors focus on avoiding them.
 
         Input:
             * User query is natural language text.
             * DDL schema could be used for table generation.
+            * Dataframe is pandas dataframe object.
 
         Output:
-            * Valid PosgreSQL query.
-            * Tablenames MUST be in quotes e.g. SELECT * FROM "Tablename"; 
+            * Valid python code to generate informative and beautiful plot.
 
         Restrictions:
             * Do NOT respond in conversational text!
-            * Provide only PostgreSQL query.
-            * Remember to quote table name if it's capitalized
+            * Provide only python code.
+            * For plotting use only [dataframe as df, pandas as pd, seaborn as sns]
+
         """
-        return self.sql_config
+        return self.plot_config
     
 
     def get_talk_config(self):

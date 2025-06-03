@@ -25,8 +25,6 @@ def convert_for_download(tables):
     return json.dumps(tables, indent=2)
 
 def main():
-    st.title("DatabaseChat")
-
     if "chat" not in st.session_state:
         st.session_state.chat = ChatClient()
 

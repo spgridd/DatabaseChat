@@ -13,6 +13,7 @@ from architecture.chat_history import ChatHistory, Instructions
 from functions.parse_ddl import parse_multiple_schemas
 from functions.validation import validate_json
 from functions.sql_generation import generate_query
+from functions.plot_generation import generate_plot
 
 
 load_dotenv()
@@ -89,9 +90,9 @@ class ChatClient():
             }]
         )
 
-    def talk_with_data(self, user_query, ddl_schema):
+    def talk_with_data(self, user_query, ddl_schema, contents):
         # Add some cleaning of the history
-        contents = [types.Content(parts=[types.Part(text=user_query)], role='user')]
+        contents.append(types.Content(parts=[types.Part(text=user_query)], role='user'))
         system_instruction = self.instructions.get_talk_config()
 
         self.history.add_message(role='user', content=user_query)
@@ -117,32 +118,46 @@ class ChatClient():
             call = getattr(part, "function_call", None)
             if call:
                 logging.info("\nFunction Called\n")
+                contents.append(types.Content(parts=[types.Part(function_call=call)], role='model'))
                 if call.name == "generate_query":
                     dummy_query = call.args["user_query"]
                     logging.info(f"\nENHANCED QUERY:\n{dummy_query}\n")
 
                     error = 'first_run'
                     while error:
-                        query, dataframe, error = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema, error=error)
+                        result = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema, error=error, contents=contents, for_plot=False)
+                        query, dataframe, error, contents = result
+
+                        # logging.info(f"\nCONTENTS:\n{contents}\n")
+
+                        # # Add function result to the history everytime
+                        # function_response_part = types.Part(
+                        #     function_response=types.FunctionResponse(
+                        #         name=call.name,
+                        #         response={"query": query, "dataframe": dataframe, "error": error, "contents": contents}
+                        #     )
+                        # )
+                        # contents.append(types.Content(role="function", parts=[function_response_part]))
 
                     self.history.add_message(role='assistant', content=(query, dataframe))
 
-                    return query, dataframe
+                    return query, dataframe, contents
                 
                 elif call.name == "create_plot":
-                    logging.info("\nCREATE PLOT CALLED\n")
-                    return "CREATE PLOT CALLED", pd.DataFrame([])
+                    error_plot = 'first_run'
+                    while error_plot:
+                        error = 'first_run'
+                        while error:
+                            result = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema, error=error, contents=contents, for_plot=True)
+                            query, dataframe, error, contents = result
+
+                        path, error_plot, contents = generate_plot(client=self.client, user_query=user_query, ddl_schema=ddl_schema, df=dataframe, error=error_plot, contents=contents)
+                    
+                    self.history.add_message(role='assistant', content=path)
+                    
+                    return path, contents
                 
         # contents.append(types.Content(role="model", parts=[candidate]))
-
-        # # Add function result to the history
-        # function_response_part = types.Part(
-        #     function_response=types.FunctionResponse(
-        #         name=tool_call.name,
-        #         response={"result": result}
-        #     )
-        # )
-        # contents.append(types.Content(role="function", parts=[function_response_part]))
 
 
     def update_safety_flag(self, response):
