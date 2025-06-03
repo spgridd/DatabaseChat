@@ -11,9 +11,18 @@ load_dotenv()
 
 
 def generate_query(client, user_query, ddl_schema, error, contents, for_plot):
-        prompt = f"Generate SQL query for this setup.\nDDL schema: {ddl_schema}.\nUser query: {user_query}."
-        if error != 'first_run':
-            prompt += f"\nPreviously your query generated those errors: {error}. Fix them."
+        if error == 'first_run':
+            prompt = (
+                f"Generate a valid PostgreSQL SQL query.\n"
+                f"User request: {user_query}\n"
+                f"DDL schema: {ddl_schema}"
+            )
+        else:
+            prompt = (
+                f"The previous query resulted in this error:\n{error}\n"
+                f"Please regenerate a valid, fixed SQL query based on the original request:\n"
+                f"{user_query}\n"
+            )
 
         contents.append(types.Content(parts=[types.Part(text=prompt)], role='user'))
 
@@ -37,6 +46,8 @@ def generate_query(client, user_query, ddl_schema, error, contents, for_plot):
         engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
 
         response_text = response.candidates[0].content.parts[0].text
+
+        contents.append(types.Content(parts=[types.Part(text=response_text)], role='model'))
 
         if response_text.startswith("```sql"):
             response_text = response_text[len("```sql"):].strip()

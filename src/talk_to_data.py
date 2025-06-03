@@ -42,6 +42,9 @@ def main():
             with st.chat_message('assistant'):
                 response = chat.talk_with_data(user_query=prompt, ddl_schema=schema, contents=contents)
 
+                if response == 'ERROR':
+                    st.error("Some error occured that can't be fixed quickly. Try again.")
+
                 if len(response) == 2:
                     path, contents = response
                     print(f"\nPATH:{path}\n")

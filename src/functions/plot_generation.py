@@ -15,9 +15,19 @@ load_dotenv()
 
 
 def generate_plot(client, user_query, ddl_schema, df, error, contents):
-    prompt = f"Generate python plot code for this setup.\nDDL schema: {ddl_schema}.\nUser query: {user_query}.\nDataframe: {df}"
-    if error != 'first_run':
-        prompt += f"\nPreviously your code generated those errors: {error}. Fix them."
+    if error == 'first_run':
+        prompt = (
+            f"Generate python plot code for this setup.\n"
+            f"User request: {user_query}\n"
+            f"DDL schema: {ddl_schema}\n"
+            f"Dataframe: {df}"
+        )
+    else:
+        prompt = (
+            f"The previous code resulted in this error:\n{error}\n"
+            f"Please regenerate a valid, fixed python plot code based on the original request:\n"
+            f"{user_query}\n"
+        )    
 
     contents.append(types.Content(parts=[types.Part(text=prompt)], role='user'))
     system_instruction = Instructions().get_plot_config()
@@ -31,6 +41,8 @@ def generate_plot(client, user_query, ddl_schema, df, error, contents):
     )
 
     response_text = response.candidates[0].content.parts[0].text
+
+    contents.append(types.Content(parts=[types.Part(text=response_text)], role='model'))
 
     if response_text.startswith("```python"):
         response_text = response_text[len("```python"):].strip()

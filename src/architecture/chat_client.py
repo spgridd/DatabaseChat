@@ -124,20 +124,15 @@ class ChatClient():
                     logging.info(f"\nENHANCED QUERY:\n{dummy_query}\n")
 
                     error = 'first_run'
-                    while error:
+                    retries = 0
+
+                    while error and retries < 5:
                         result = generate_query(client=self.client, user_query=user_query, ddl_schema=ddl_schema, error=error, contents=contents, for_plot=False)
                         query, dataframe, error, contents = result
-
-                        # logging.info(f"\nCONTENTS:\n{contents}\n")
-
-                        # # Add function result to the history everytime
-                        # function_response_part = types.Part(
-                        #     function_response=types.FunctionResponse(
-                        #         name=call.name,
-                        #         response={"query": query, "dataframe": dataframe, "error": error, "contents": contents}
-                        #     )
-                        # )
-                        # contents.append(types.Content(role="function", parts=[function_response_part]))
+                        retries += 1
+                    
+                    if retries >= 5:
+                        return "ERROR"
 
                     self.history.add_message(role='assistant', content=(query, dataframe))
 
@@ -156,8 +151,6 @@ class ChatClient():
                     self.history.add_message(role='assistant', content=path)
                     
                     return path, contents
-                
-        # contents.append(types.Content(role="model", parts=[candidate]))
 
 
     def update_safety_flag(self, response):
