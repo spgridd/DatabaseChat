@@ -5,11 +5,12 @@ import os
 import pandas as pd
 from sqlalchemy import text, create_engine
 from sqlalchemy.exc import SQLAlchemyError
+from langfuse.decorators import observe, langfuse_context
 from architecture.chat_history import Instructions
 
 load_dotenv()
 
-
+@observe(as_type='generation')
 def generate_query(client, user_query, ddl_schema, error, contents, for_plot):
         if error == 'first_run':
             prompt = (
@@ -36,8 +37,23 @@ def generate_query(client, user_query, ddl_schema, error, contents, for_plot):
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                temperature=0.0
+                temperature=0.0,
+                
             )
+        )
+
+        langfuse_context.update_current_observation(
+            input=input,
+            model="gemini-2.5-flash-preview-05-20",
+            usage_details={
+                "input": response.usage_metadata.prompt_token_count,
+                "output": response.usage_metadata.candidates_token_count,
+                "total": response.usage_metadata.total_token_count
+            },
+            cost_details={
+                "input": response.usage_metadata.prompt_token_count * 0.15 / 1000000,
+                "output": response.usage_metadata.candidates_token_count * 0.60 / 1000000
+            }
         )
 
         user = os.getenv("POSTGRESQL_USER")

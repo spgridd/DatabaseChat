@@ -19,27 +19,27 @@ def main():
 
     with st.sidebar:
         selected = option_menu(
-            menu_title="Navigation",
+            menu_title="Data Assistant",
             options=["Data Generation", "Talk to Data"],
-            icons=["bar-chart", "chat-dots"],
-            menu_icon="cast",
+            icons=["database-fill", "chat-text-fill"],
+            menu_icon="back",
             default_index=0,
             styles={
                 "container": {
                     "padding": "10px",
-                    "background-color": "#E9ECEF",  # Match sidebar color
+                    "background-color": "#E9ECEF",
                 },
-                "icon": {"color": "#0B5ED7", "font-size": "18px"},  # Blue icon
+                "icon": {"color": "#0B5ED7", "font-size": "18px"},
                 "nav-link": {
                     "font-size": "16px",
                     "text-align": "left",
                     "margin": "5px 0",
-                    "color": "#212529",  # Text color
-                    "--hover-color": "#D6DBE0"  # Slightly darker gray on hover
+                    "color": "#212529",
+                    "--hover-color": "#D6DBE0"
                 },
                 "nav-link-selected": {
-                    "background-color": "#D0E2FF",  # Light blue selection
-                    "color": "#0B5ED7",  # Text color on selection
+                    "background-color": "#D0E2FF",
+                    "color": "#0B5ED7",
                     "font-weight": "bold",
                 }
             }

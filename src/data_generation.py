@@ -65,102 +65,108 @@ def main():
                         logging.info(f"\nRESPONSE:\n{response}\n")
                         decoded = json.loads(response)
                         logging.info(f"\nDECODED:\n{decoded}\n")
+                        if decoded['data'] == {}:
+                            raise TypeError
                         st.session_state.last_response = decoded
                     except json.JSONDecodeError as e:
                         st.error("Response was too long! Increase Max Tokens or simplify your prompt")
-                        st.session_state.last_response = None
+                        # st.session_state.last_response = None
                         logging.error(f"JSON decode error: {e}")
                     except TypeError as e:
                         st.error("Unfortunately I can't help you with this issue.")
-                        st.session_state.last_response = None
+                        # st.session_state.last_response = None
 
-                        
 
     # Container to display and edit dfs
     with st.container(border=True):
-        # DataFrame Visualization
-        if "last_response" in st.session_state and st.session_state.last_response:
-            if st.session_state.last_response.get("data"):
-                table_names = list(st.session_state.last_response["data"].keys())
+        st.subheader("Data Preview")
 
-                col_text, col_download, col_selectbox = st.columns([6, 2, 1])
-                with col_selectbox:
-                    selected_table = st.selectbox("", options=table_names)
-                
-                with col_download:
-                    file_to_save = convert_for_download(st.session_state.last_response)
+        # Check if there is data to display from a previous generation
+        if "last_response" in st.session_state and st.session_state.last_response and st.session_state.last_response.get("data"):
+            response_data = st.session_state.last_response["data"]
+            table_names = list(response_data.keys())
 
-                    st.download_button(
-                        label="Download",
-                        data=file_to_save,
-                        file_name="data.json",
-                        mime="application/json",
-                        icon=":material/download:",
-                    )
+            # Controls Row (Select Table, Download, Save)
+            col_select, col_download, col_save = st.columns([0.5, 0.25, 0.25])
 
-                with col_text:
-                    st.subheader("Data preview")
-                    
-                if selected_table:
-                    df = pd.DataFrame(st.session_state.last_response["data"][selected_table])
-                    st.dataframe(df, use_container_width=True)
-        else:
-            st.subheader("Data preview")
-            all_dataframes = []
-            dummy_df = pd.DataFrame(dummy_data)
-            all_dataframes.append(dummy_df)
-            st.dataframe(dummy_df, use_container_width=True)
-            st.write("*Dummy data")
-        
-        col_input, separator, col_button = st.columns([7, 0.25, 3])
-        # Edit df input
-        with col_input:
-            edit_input = st.text_input(label="Quick edit", placeholder="Enter quick edit instructions...", label_visibility='hidden')
+            with col_select:
+                selected_table = st.selectbox(
+                    "Select a table to view",
+                    options=table_names,
+                    label_visibility="collapsed"
+                )
 
-        # Submit button
-        with col_button:
-            st.markdown("")
-            st.markdown("")
-            if st.button("Submit", use_container_width=True):
-                if edit_input:
-                    if "last_response" in st.session_state:
-                        with st.spinner("Processing your query..."):
-                            response = chat.edit_data(
-                                prompt=edit_input,
-                                dataframes=st.session_state.last_response,
-                                temperature=temperature,
-                                max_tokens=max_tokens
-                            )
-                            try:
-                                decoded = json.loads(response)
-                                st.session_state.last_response = decoded
-                            except json.JSONDecodeError as e:
-                                st.error("Response was too long! Increase Max Tokens param or simplify your prompt")
-                                st.session_state.last_response = None
-                                logging.error(f"JSON decode error: {e}")
-                            except TypeError as e:
-                                st.error("Unfortunately I can't help you with this issue.")
-                                st.session_state.last_response = None
-                else:
-                    st.warning("Please enter a question.")
+            with col_download:
+                file_to_save = convert_for_download(st.session_state.last_response)
+                st.download_button(
+                    label="📥 Download JSON",
+                    data=file_to_save,
+                    file_name="data.json",
+                    mime="application/json",
+                    use_container_width=True,
+                    help="Download the complete dataset as a single JSON file."
+                )
 
-    with st.container():
-        if "last_response" in st.session_state and st.session_state.last_response:
-            if st.session_state.last_response.get("data"):
-                if st.button("Save locally"):
-                    table_names = list(st.session_state.last_response["data"].keys())
+            with col_save:
+                if st.button("💾 Save to DB", use_container_width=True, help="Save all tables to the configured database."):
                     user = os.getenv("POSTGRESQL_USER")
                     password = os.getenv("POSTGRESQL_PASSWORD")
                     db = os.getenv("POSTGRESQL_DB")
                     engine = create_engine(f"postgresql+psycopg2://{user}:{password}@localhost:5432/{db}")
-                    
-                    for table_name in table_names:
-                        df = pd.DataFrame(st.session_state.last_response["data"][table_name])
-                        if not df.empty:
-                            df.to_sql(table_name, engine, if_exists="replace", index=False)
-                            st.success(f"Saved table: {table_name}")
-                        else:
-                            st.warning(f"Table {table_name} is empty and was skipped.")
+
+                    with st.spinner("Saving to database..."):
+                        for table_name in table_names:
+                            df = pd.DataFrame(response_data[table_name])
+                            if not df.empty:
+                                df.to_sql(table_name, engine, if_exists="replace", index=False)
+                                st.toast(f"Saved table: {table_name}", icon="💾")
+                            else:
+                                st.toast(f"Skipped empty table: {table_name}", icon="⚠️")
+
+            if selected_table:
+                df = pd.DataFrame(response_data[selected_table])
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+        else:
+            # Fallback to show dummy data if no response is available yet
+            st.info("Generated data will appear here. Showing dummy data for now.")
+            dummy_df = pd.DataFrame(dummy_data)
+            st.dataframe(dummy_df, use_container_width=True, hide_index=True)
+        
+        col_input, col_button = st.columns([3, 1])
+        with col_input:
+            edit_input = st.text_input(
+                "Quick edit input",
+                placeholder="Enter your edit instructions here...",
+                label_visibility='hidden'
+            )
+
+        with col_button:
+            st.markdown("")
+            st.markdown("")
+            if st.button("Apply Edit", use_container_width=True):
+                if not edit_input:
+                    st.warning("Please enter your edit instructions.")
+                elif "last_response" not in st.session_state or not st.session_state.last_response:
+                    st.error("You must generate data before you can edit it.")
+                else:
+                    with st.spinner("Processing your query..."):
+                        response = chat.edit_data(
+                            prompt=edit_input,
+                            dataframes=st.session_state.last_response,
+                            temperature=temperature,
+                            max_tokens=max_tokens
+                        )
+                        try:
+                            decoded = json.loads(response)
+                            st.session_state.last_response = decoded
+                            st.success("Edit applied successfully!")
+                            st.rerun()
+                        except json.JSONDecodeError as e:
+                            st.error("Response was too long! Increase Max Tokens param or simplify your prompt")
+                            logging.error(f"JSON decode error: {e}")
+                        except TypeError:
+                            st.error("Unfortunately I can't help you with this issue.")
 
 
 

@@ -2,13 +2,16 @@ from google import genai
 from google.genai import types
 import os
 from dotenv import load_dotenv
-from typing import Dict, List, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, Field
+from typing import Dict, List, Union
+from datetime import date, datetime
 import json
 import logging
 from sqlalchemy import create_engine, text
 import pandas as pd
 from langfuse import Langfuse
+from langfuse.decorators import observe, langfuse_context
+import time
 
 from architecture.chat_history import ChatHistory, Instructions
 from functions.parse_ddl import parse_multiple_schemas
@@ -40,6 +43,12 @@ class ChatClient():
         )
         self.instructions = Instructions()
         self.history = ChatHistory()
+        self.edit_counter = 0
+
+        # session_time = time.localtime()
+        # session_id = f"session_{session_time.tm_mday}{session_time.tm_mon}{session_time.tm_year}_{session_time.tm_hour}{session_time.tm_min}{session_time.tm_sec}"
+        # self.trace = self.langfuse.trace(session_id=session_id, name="chat-session")
+        # langfuse_context.update_current_trace(self.trace)
 
         self.is_safe = False
 
@@ -96,6 +105,7 @@ class ChatClient():
             }]
         )
 
+    @observe(as_type='generation')
     def talk_with_data(self, user_query, ddl_schema, contents):
         # Add some cleaning of the history
         contents.append(types.Content(parts=[types.Part(text=user_query)], role='user'))
@@ -114,6 +124,16 @@ class ChatClient():
             model="gemini-2.0-flash",
             contents=contents,
             config=config
+        )
+
+        langfuse_context.update_current_observation(
+            input=input,
+            model="gemini-2.0-flash",
+            usage_details={
+                "input": response.usage_metadata.prompt_token_count,
+                "output": response.usage_metadata.candidates_token_count,
+                "total": response.usage_metadata.total_token_count
+            }
         )
 
         candidate = response.candidates[0]
@@ -169,6 +189,7 @@ class ChatClient():
             self.is_safe = False
 
 
+    @observe(as_type='generation')
     def check_safety(self, prompt):
         contents = [types.Content(parts=[types.Part(text=f"Check safety of this prompt:\n{prompt}")], role='user')]
         system_instruction = self.instructions.get_safety_config()
@@ -182,6 +203,16 @@ class ChatClient():
                 response_mime_type="application/json",
                 response_schema=SafetyResponse
             )
+        )
+
+        langfuse_context.update_current_observation(
+            input=input,
+            model="gemini-2.0-flash",
+            usage_details={
+                "input": response.usage_metadata.prompt_token_count,
+                "output": response.usage_metadata.candidates_token_count,
+                "total": response.usage_metadata.total_token_count
+            }
         )
 
         response_text = response.candidates[0].content.parts[0].text
@@ -201,6 +232,7 @@ class ChatClient():
         return list(parsed.keys())
 
 
+    @observe(as_type="generation")
     def generate_data(self, prompt, ddl_schema, temperature, max_tokens):
         """
         Generate data for all tables, one at a time, and combine results.
@@ -225,8 +257,25 @@ class ChatClient():
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    temperature=temperature
+                    temperature=temperature,
+                    response_mime_type='application/json'
                 )
+            )
+
+            logging.info(f"\nResponse:\n{response.text}")
+
+            langfuse_context.update_current_observation(
+                input=input,
+                model="gemini-2.5-flash-preview-05-20",
+                usage_details={
+                    "input": response.usage_metadata.prompt_token_count,
+                    "output": response.usage_metadata.candidates_token_count,
+                    "total": response.usage_metadata.total_token_count
+                },
+                cost_details={
+                    "input": response.usage_metadata.prompt_token_count * 0.15 / 1000000,
+                    "output": response.usage_metadata.candidates_token_count * 0.60 / 1000000
+                }
             )
 
             response_text = response.text
@@ -242,6 +291,7 @@ class ChatClient():
             logging.info("\n\nSTH NOT SAFE!!!\n\n")
 
 
+    @observe(as_type='generation')
     def extract_affected_tables(self, prompt: str, table_names: List[str]) -> List[str]:
         """
         Use LLM to extract affected table names from prompt.
@@ -267,6 +317,16 @@ class ChatClient():
                 )
             )
 
+            langfuse_context.update_current_observation(
+                input=input,
+                model="gemini-2.0-flash",
+                usage_details={
+                    "input": response.usage_metadata.prompt_token_count,
+                    "output": response.usage_metadata.candidates_token_count,
+                    "total": response.usage_metadata.total_token_count
+                }
+            )
+
             try:
                 return json.loads(response.text)
             except Exception as e:
@@ -274,6 +334,7 @@ class ChatClient():
                 return table_names
 
     
+    @observe(as_type='generation')
     def edit_data(self, prompt, dataframes, temperature, max_tokens):
         """
         Edit only the relevant tables based on the prompt, return full dataset with updated tables.
@@ -304,12 +365,28 @@ class ChatClient():
                 )
             )
 
+            langfuse_context.update_current_observation(
+                input=input,
+                model="gemini-2.5-flash-preview-05-20",
+                usage_details={
+                    "input": response.usage_metadata.prompt_token_count,
+                    "output": response.usage_metadata.candidates_token_count,
+                    "total": response.usage_metadata.total_token_count
+                },
+                cost_details={
+                    "input": response.usage_metadata.prompt_token_count * 0.15 / 1000000,
+                    "output": response.usage_metadata.candidates_token_count * 0.60 / 1000000
+                }
+            )
+
             # candidate = response.candidates[0]
             # parts = candidate.content.parts[0]
             response_text = response.text
 
             try:
                 edited_partial = json.loads(response_text)
+
+                print(edited_partial)
 
                 full_data = dataframes["data"].copy()
 
@@ -321,7 +398,13 @@ class ChatClient():
 
             except json.JSONDecodeError as e:
                 logging.error(f"JSON decode error during edit: {e}")
-                return json.dumps(dataframes)  # return original
+                # return json.dumps(dataframes)  # return original
+                if self.edit_counter < 5:
+                    prompt += f"\nFor given prompt your previous response threw an error: {e}. Fix it."
+                    self.edit_data(prompt=prompt, dataframes=dataframes, temperature=temperature, max_tokens=max_tokens)
+                    self.edit_counter += 1
+                else:
+                    return json.dumps(dataframes)  # return original
 
     
     def clear_history(self):
